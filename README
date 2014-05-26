@@ -1,0 +1,90 @@
+# **DNS based distributed Firewall Application - Using Software Defined Networking**
+---
+**Abstract:** Implemented a DNS based Firewall application on top of a Controller 
+which makes Network Managers job easier by defining centralized policies that 
+could be distributed over multiple networks. Using this application a Network manager 
+can block access to particular websites using DNS queries and also can provide access 
+to a blocked website, if required. 
+This application can be implemented over a Single Network or Multiple Networks.
+
+---
+## Topology Design and Implementation
+
+![topo.PNG](https://bitbucket.org/repo/bg9M7z/images/2955585777-topo.PNG)
+
+This Topology could be implemented on any platform, like VM Ware, Xen Hypervisor etc., 
+
+### Implementation using VM Ware
+
+1. Create 5 VMS.
+
+    a) Two VMs for OVS and Floodlight controller on the same machine.    
+    b) Two VMs for 2 Hosts. (These Hosts should be able to connect to the internet only via OVS machine.)    
+    c) One VM for a control Server.
+    
+2. Install OVS in 2 VMS.
+3. Install Web Server on one VM which acts as a control server to push required policies.
+     
+### Network Interfaces on Different VMs.
+1. On the VM with **First OVS** and Floodlight Controller
+
+    **Interface 1** `eth0` as NAT (For Internet Access let us say connected to virtual bridge `vmnet1`)
+    
+    **Interface 2** `eth1` as Host-only with DHCP disabled (Connected to virtual bridge `vmnet5`)
+    
+    **Interface 3** `eth2` as Host-only which connects to a web-server (let us say `Virtual Bridge vmnet3`)
+
+2. On the VM with **Second OVS** and Floodlight Controller 
+
+    **Interface 1** `eth0` as NAT (For Internet Access, this should be connected to different virtual bridge let us say connected to virtual bridge `vmnet2`)
+    
+    **Interface 2** `eth1` as Host-only with DHCP disabled (Connected to virtual bridge `vmnet6`).
+    
+    **Interface 3** `eth2` as Host-only which connects to a web-server (Connected to different virtual and in different sub-net from 1st OVS `eth2` network interface let us say connected to virtual bridge `vmnet4`)).
+
+3. On the VM with **Web Server**.
+
+    **Interface 1** `eth0` as bridged (For Internet Access)
+    
+    **Interface 2** `eth1` as Host-only connects to OVS1 VM (Connects to virtual Bridge `vmnet3`)
+    
+    **Interface 3** `eth2` as Host-only connects to OVS2 VM (Connects to Virtual Bridge `vmnet4`)
+    
+4. On the VM with **Host1**
+
+    **Interface 1** `eth0` as Host-Only with DHCP disabled (Connected to virtual bridge `vmnet5`)
+    
+5. On the VM with **Host2**
+
+    **Interface 1** `eth0` as Host-Only with DHCP disabled (Connected to virtual bridge `vmnet6`)
+    
+---
+
+### Enabling Internet Access on Hosts Via OVS Machines.
+
+1. Create bridge on OVS.
+2. Connect eth0, eth1 to OVS bridge.
+3. Remove the eth0 IP address and do `dhclient` on bridge. (OVS will be able to Access Internet)
+4. Go to the host VM and do `dhclient` now we will get IP address. (Host will be able to Access Internet via OVS).
+5. Run **Floodlight Controller** in the OVS.
+6. Set-controller in OVS.
+7. With all the above steps performed, the two VMs will be able to Access Internet vai OVS and if we push any flow locally then it should work on the Host machines.
+
+---
+
+### About North-bound Application and DNS based Firewall Implementation.
+
+1. Check connectivity to both the OVS machines from Web Server.
+2. As we have Internet Access to the Web Server we can get DNS record details of any Web Site using `DIG` utility. (We might not get all the IP addresses associated for a particular website, instead we will get IPs that the local DNS could resolve).
+3. To define a policy, use the following syntax.
+
+    `perl blocker_fltopo.pl <controller1 ip, controller2 ip ....> <service name>`
+    
+    `eg: perl blocker_fltopo.pl 192.168.3.1,192.168.4.1 www.google.com`
+
+4. To remove a previously defined policy on a specific network, use the following syntax
+    
+    `perl enablerboth.pl <controller1ip,controller2ip,....> <servicename>`
+    
+    `eg: perl enablerboth.pl 192.168.3.1,192.168.4.1 www.google.com`
+    
